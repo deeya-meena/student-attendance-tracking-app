@@ -6,7 +6,7 @@ import React from 'react'
 function Header() {
   const {user}=useKindeBrowserClient();
   return (
-    <div>
+    <div className='p-4 shadow-sm border flex justify-between'>
       <div>
 
       </div>
