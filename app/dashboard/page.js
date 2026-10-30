@@ -1,49 +1,34 @@
 "use client";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import {
-  Users,
-  UserCheck,
-  UserX,
-  TrendingUp,
-  Calendar,
   GraduationCap,
+  TrendingUp,
+  TrendingDown,
+  Calendar as CalendarIcon,
+  ChevronDown,
+  Loader2,
+  AlertCircle,
 } from "lucide-react";
+import AttendanceChart from "./_components/AttendanceChart";
+import MonthlyAttendanceChart from "./_components/MonthlyAttendanceChart";
 
-function StatCard({ title, value, subtitle, icon: Icon, colorClass }) {
+const GRADES = ["5th", "6th", "7th", "8th", "9th", "10th", "11th", "12th"];
+
+function StatCard({ title, value, icon: Icon }) {
   return (
-    <div className="rounded-xl border bg-card p-5 shadow-sm flex items-start gap-4">
-      <div className={`rounded-lg p-2.5 ${colorClass}`}>
-        <Icon className="size-5 text-white" />
+    <div className="bg-[#e8f2fc] rounded-2xl p-6 shadow-xs flex items-center gap-4 transition-transform duration-150 hover:translate-y-[-1px]">
+      {/* Circular icon badge with white background */}
+      <div className="w-12 h-12 rounded-full bg-white flex items-center justify-center shrink-0 shadow-xs">
+        <Icon className="size-6 text-[#4845d2]" />
       </div>
       <div>
-        <p className="text-sm text-muted-foreground">{title}</p>
-        <p className="text-2xl font-bold mt-0.5">{value ?? "—"}</p>
-        {subtitle && <p className="text-xs text-muted-foreground mt-0.5">{subtitle}</p>}
+        <h3 className="text-sm font-semibold text-slate-800 leading-none">
+          {title}
+        </h3>
+        <p className="text-2xl font-bold text-slate-900 mt-2 leading-none">
+          {value}
+        </p>
       </div>
-    </div>
-  );
-}
-
-function AttendanceBar({ date, present, total }) {
-  const pct = total > 0 ? Math.round((present / total) * 100) : 0;
-  const label = new Date(date + "T00:00:00").toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-  });
-
-  const barColor =
-    pct >= 75 ? "bg-emerald-500" : pct >= 50 ? "bg-amber-500" : "bg-red-500";
-
-  return (
-    <div className="flex items-center gap-3">
-      <span className="text-xs text-muted-foreground w-16 shrink-0">{label}</span>
-      <div className="flex-1 bg-muted rounded-full h-2 overflow-hidden">
-        <div
-          className={`h-2 rounded-full transition-all ${barColor}`}
-          style={{ width: `${pct}%` }}
-        />
-      </div>
-      <span className="text-xs font-medium w-10 text-right">{pct}%</span>
     </div>
   );
 }
@@ -53,138 +38,177 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  // Filters matching screenshot (May 2024 / 5th)
+  // Format: "YYYY-MM"
+  const [selectedMonth, setSelectedMonth] = useState(() => {
+    const d = new Date();
+    // Default to current year-month or "2024-05" if prefer reference
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, "0");
+    return `${yyyy}-${mm}`;
+  });
+  const [selectedGrade, setSelectedGrade] = useState("5th");
+
+  // Format month for display e.g. "May 2024"
+  const formattedMonth = (() => {
+    if (!selectedMonth) return "Select Month";
+    const [year, month] = selectedMonth.split("-");
+    const date = new Date(parseInt(year, 10), parseInt(month, 10) - 1, 1);
+    return date.toLocaleDateString("en-US", { month: "short", year: "numeric" });
+  })();
+
+  const fetchDashboardData = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const params = new URLSearchParams();
+      if (selectedGrade) params.append("grade", selectedGrade);
+      if (selectedMonth) params.append("month", selectedMonth);
+
+      const res = await fetch(`/api/dashboard?${params.toString()}`);
+      const json = await res.json();
+      if (!res.ok || json.error) {
+        throw new Error(json.error || "Failed to fetch dashboard data");
+      }
+      setStats(json.data);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  }, [selectedGrade, selectedMonth]);
+
   useEffect(() => {
-    fetch("/api/dashboard")
-      .then((r) => r.json())
-      .then((json) => {
-        if (json.error) throw new Error(json.error);
-        setStats(json.data);
-      })
-      .catch((e) => setError(e.message))
-      .finally(() => setLoading(false));
-  }, []);
+    fetchDashboardData();
+  }, [fetchDashboardData]);
 
-  if (loading) {
-    return (
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 animate-pulse">
-        {[...Array(4)].map((_, i) => (
-          <div key={i} className="rounded-xl border bg-muted h-28" />
-        ))}
-      </div>
-    );
-  }
+  // Derived real attendance percentages
+  const totalStudents = stats?.totalStudents ?? 0;
+  const totalRecords = stats?.totalRecords ?? 0;
+  const presentCount = stats?.presentCount ?? 0;
+  const absentCount = stats?.absentCount ?? 0;
 
-  if (error) {
-    return (
-      <div className="rounded-xl border border-destructive/30 bg-destructive/10 p-6 text-center">
-        <p className="text-destructive font-medium">Failed to load dashboard</p>
-        <p className="text-sm text-muted-foreground mt-1">{error}</p>
-      </div>
-    );
-  }
+  const presentPercentage =
+    totalRecords > 0
+      ? `${((presentCount / totalRecords) * 100).toFixed(1)}%`
+      : "0%";
 
-  const {
-    totalStudents,
-    presentCount,
-    absentCount,
-    attendancePercentage,
-    studentsByGrade,
-    recentAttendance,
-  } = stats;
+  const absentPercentage =
+    totalRecords > 0
+      ? `${((absentCount / totalRecords) * 100).toFixed(1)}%`
+      : "0%";
 
   return (
-    <div className="space-y-6">
-      {/* Stat cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard
-          title="Total Students"
-          value={totalStudents}
-          icon={Users}
-          colorClass="bg-blue-500"
-        />
-        <StatCard
-          title="Present (all time)"
-          value={presentCount}
-          icon={UserCheck}
-          colorClass="bg-emerald-500"
-        />
-        <StatCard
-          title="Absent (all time)"
-          value={absentCount}
-          icon={UserX}
-          colorClass="bg-red-500"
-        />
-        <StatCard
-          title="Attendance Rate"
-          value={`${attendancePercentage}%`}
-          subtitle="across all records"
-          icon={TrendingUp}
-          colorClass="bg-violet-500"
-        />
-      </div>
+    <div className="space-y-6 max-w-7xl mx-auto">
+      {/* 3. DASHBOARD HEADING AND FILTERS */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <h1 className="text-2xl font-bold text-slate-800 tracking-tight">
+          Dashboard
+        </h1>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {/* Students by Grade */}
-        <div className="rounded-xl border bg-card p-5 shadow-sm">
-          <div className="flex items-center gap-2 mb-4">
-            <GraduationCap className="size-5 text-muted-foreground" />
-            <h2 className="font-semibold">Students by Grade</h2>
+        {/* Filters aligned to the upper-right */}
+        <div className="flex items-center gap-3 self-start sm:self-auto">
+          {/* Month selector with calendar icon */}
+          <div className="relative">
+            <label className="flex items-center gap-2 px-3.5 py-1.5 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-700 shadow-xs cursor-pointer hover:bg-slate-50 transition-colors">
+              <CalendarIcon className="size-4 text-slate-500 shrink-0" />
+              <span suppressHydrationWarning>{formattedMonth}</span>
+              <input
+                type="month"
+                value={selectedMonth}
+                onChange={(e) => setSelectedMonth(e.target.value)}
+                suppressHydrationWarning
+                className="sr-only"
+              />
+            </label>
           </div>
-          {studentsByGrade.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-6">
-              No students enrolled yet.
-            </p>
-          ) : (
-            <div className="space-y-3">
-              {studentsByGrade.map(({ grade, count }) => {
-                const pct = totalStudents > 0 ? Math.round((count / totalStudents) * 100) : 0;
-                return (
-                  <div key={grade} className="flex items-center gap-3">
-                    <span className="text-xs font-medium text-muted-foreground w-10 shrink-0">
-                      {grade}
-                    </span>
-                    <div className="flex-1 bg-muted rounded-full h-2 overflow-hidden">
-                      <div
-                        className="h-2 rounded-full bg-primary transition-all"
-                        style={{ width: `${pct}%` }}
-                      />
-                    </div>
-                    <span className="text-xs font-semibold w-6 text-right">{count}</span>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
 
-        {/* Recent Attendance Trend */}
-        <div className="rounded-xl border bg-card p-5 shadow-sm">
-          <div className="flex items-center gap-2 mb-4">
-            <Calendar className="size-5 text-muted-foreground" />
-            <h2 className="font-semibold">Recent Attendance (7 days)</h2>
-          </div>
-          {recentAttendance.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-6">
-              No attendance records yet.
-            </p>
-          ) : (
-            <div className="space-y-3">
-              {recentAttendance.map((row) => (
-                <AttendanceBar key={row.date} {...row} />
+          {/* Grade dropdown matching "5th ∨" */}
+          <div className="relative">
+            <select
+              value={selectedGrade}
+              onChange={(e) => setSelectedGrade(e.target.value)}
+              suppressHydrationWarning
+              className="appearance-none bg-white border border-slate-200 rounded-lg pl-3 pr-8 py-1.5 text-sm font-medium text-slate-700 shadow-xs outline-none cursor-pointer hover:bg-slate-50 transition-colors focus:ring-2 focus:ring-[#4845d2]/20"
+            >
+              {GRADES.map((g) => (
+                <option key={g} value={g}>
+                  {g}
+                </option>
               ))}
-            </div>
-          )}
+            </select>
+            <ChevronDown className="size-4 text-slate-500 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+          </div>
         </div>
       </div>
 
-      {/* Quick tip */}
-      <div className="rounded-xl border border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950/30 p-4 flex items-start gap-3">
-        <TrendingUp className="size-4 text-blue-500 mt-0.5 shrink-0" />
-        <p className="text-sm text-blue-700 dark:text-blue-300">
-          Use the <strong>Attendance</strong> page to mark daily attendance, and the{" "}
-          <strong>Students</strong> page to manage your student roster.
-        </p>
-      </div>
+      {/* Error state */}
+      {error && (
+        <div className="flex items-center gap-3 p-4 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm">
+          <AlertCircle className="size-5 shrink-0 text-red-500" />
+          <div className="flex-1">
+            <p className="font-semibold">Failed to load statistics</p>
+            <p className="text-xs text-red-600 mt-0.5">{error}</p>
+          </div>
+          <button
+            onClick={fetchDashboardData}
+            className="px-3 py-1 bg-red-100 hover:bg-red-200 text-red-800 rounded-lg text-xs font-medium transition"
+          >
+            Retry
+          </button>
+        </div>
+      )}
+
+      {/* 4. SUMMARY CARDS */}
+      {loading ? (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 animate-pulse">
+          {[...Array(3)].map((_, i) => (
+            <div key={i} className="bg-[#e8f2fc]/60 rounded-2xl p-6 h-24" />
+          ))}
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <StatCard
+            title="Total Student"
+            value={totalStudents}
+            icon={GraduationCap}
+          />
+          <StatCard
+            title="Total Present"
+            value={presentPercentage}
+            icon={TrendingUp}
+          />
+          <StatCard
+            title="Total Absent"
+            value={absentPercentage}
+            icon={TrendingDown}
+          />
+        </div>
+      )}
+
+      {/* 5 & 6. CHARTS SECTION (Attendance bar chart on left, Monthly Attendance donut on right) */}
+      {loading ? (
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 animate-pulse">
+          <div className="lg:col-span-8 bg-white rounded-2xl border border-slate-100 p-6 h-80" />
+          <div className="lg:col-span-4 bg-white rounded-2xl border border-slate-100 p-6 h-80" />
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
+          {/* Large white card on the left titled "Attendance" */}
+          <div className="lg:col-span-8">
+            <AttendanceChart data={stats?.recentAttendance || []} />
+          </div>
+
+          {/* White card on the right titled "Monthly Attendance" */}
+          <div className="lg:col-span-4">
+            <MonthlyAttendanceChart
+              presentCount={presentCount}
+              absentCount={absentCount}
+              totalRecords={totalRecords}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

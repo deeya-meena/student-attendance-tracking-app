@@ -122,11 +122,11 @@ export default function AttendancePage() {
   const absentCount = students.filter((s) => attendance[s.id] !== true).length;
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-6 max-w-7xl mx-auto">
       {/* Page header */}
       <div>
-        <h2 className="text-2xl font-bold">Attendance</h2>
-        <p className="text-sm text-muted-foreground">
+        <h1 className="text-2xl font-bold text-slate-800 tracking-tight">Attendance</h1>
+        <p className="text-sm text-slate-500 mt-1">
           Mark attendance for a specific date and grade.
         </p>
       </div>
@@ -134,7 +134,7 @@ export default function AttendancePage() {
       {/* Controls */}
       <div className="flex flex-col sm:flex-row gap-3">
         <div className="flex items-center gap-2 flex-1">
-          <CalendarDays className="size-4 text-muted-foreground shrink-0" />
+          <CalendarDays className="size-4 text-slate-500 shrink-0" />
           <Input
             type="date"
             value={date}
@@ -142,7 +142,8 @@ export default function AttendancePage() {
               setDate(e.target.value);
               setSaved(false);
             }}
-            className="max-w-[200px]"
+            suppressHydrationWarning
+            className="max-w-[200px] bg-white border-slate-200 text-slate-800 shadow-xs"
           />
         </div>
         <select
@@ -151,7 +152,8 @@ export default function AttendancePage() {
             setGrade(e.target.value);
             setSaved(false);
           }}
-          className="h-8 rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+          suppressHydrationWarning
+          className="h-9 rounded-lg border border-slate-200 bg-white px-3 text-sm font-medium text-slate-700 shadow-xs outline-none focus:ring-2 focus:ring-[#4845d2]/20"
         >
           {GRADES.map((g) => (
             <option key={g} value={g}>
@@ -162,8 +164,8 @@ export default function AttendancePage() {
       </div>
 
       {error && (
-        <div className="flex items-center gap-2 text-sm text-destructive bg-destructive/10 rounded-lg p-3">
-          <AlertCircle className="size-4 shrink-0" />
+        <div className="flex items-center gap-2 text-sm text-red-700 bg-red-50 border border-red-200 rounded-xl p-3.5">
+          <AlertCircle className="size-4 shrink-0 text-red-500" />
           {error}
         </div>
       )}
@@ -171,38 +173,38 @@ export default function AttendancePage() {
       {loadingStudents ? (
         <div className="space-y-3 animate-pulse">
           {[...Array(4)].map((_, i) => (
-            <div key={i} className="h-14 rounded-xl bg-muted" />
+            <div key={i} className="h-14 rounded-2xl bg-slate-100" />
           ))}
         </div>
       ) : students.length === 0 ? (
-        <div className="rounded-xl border border-dashed p-12 text-center">
-          <Users className="size-10 text-muted-foreground mx-auto mb-3" />
-          <p className="font-medium text-muted-foreground">
+        <div className="rounded-2xl border border-dashed border-slate-200 bg-white p-12 text-center">
+          <Users className="size-10 text-slate-400 mx-auto mb-3" />
+          <p className="font-semibold text-slate-700">
             No students in Grade {grade}
           </p>
-          <p className="text-sm text-muted-foreground mt-1">
+          <p className="text-sm text-slate-500 mt-1">
             Go to the Students page to enroll students.
           </p>
         </div>
       ) : (
         <>
-          {/* Summary + bulk actions */}
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 rounded-xl border bg-card p-4">
+          {/* Summary + bulk actions (Clean pure white container) */}
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-xs text-slate-800">
             <div className="flex items-center gap-6">
               <div className="flex items-center gap-2">
                 <CheckCircle2 className="size-4 text-emerald-500" />
-                <span className="text-sm">
-                  <strong className="text-emerald-600">{presentCount}</strong> Present
+                <span className="text-sm font-medium text-slate-700">
+                  <strong className="text-emerald-600 font-bold">{presentCount}</strong> Present
                 </span>
               </div>
               <div className="flex items-center gap-2">
                 <XCircle className="size-4 text-red-500" />
-                <span className="text-sm">
-                  <strong className="text-red-600">{absentCount}</strong> Absent
+                <span className="text-sm font-medium text-slate-700">
+                  <strong className="text-red-600 font-bold">{absentCount}</strong> Absent
                 </span>
               </div>
               {students.length > 0 && (
-                <span className="text-xs text-muted-foreground">
+                <span className="text-xs font-semibold text-slate-500 bg-slate-100 px-2.5 py-1 rounded-md">
                   {Math.round((presentCount / students.length) * 100)}% present
                 </span>
               )}
@@ -212,6 +214,8 @@ export default function AttendancePage() {
                 variant="outline"
                 size="sm"
                 onClick={() => markAll(true)}
+                suppressHydrationWarning
+                className="bg-white border-slate-200 text-slate-700 hover:bg-slate-50 shadow-xs text-xs font-medium"
               >
                 Mark All Present
               </Button>
@@ -219,46 +223,48 @@ export default function AttendancePage() {
                 variant="outline"
                 size="sm"
                 onClick={() => markAll(false)}
+                suppressHydrationWarning
+                className="bg-white border-slate-200 text-slate-700 hover:bg-slate-50 shadow-xs text-xs font-medium"
               >
                 Mark All Absent
               </Button>
             </div>
           </div>
 
-          {/* Student list */}
-          <div className="rounded-xl border overflow-hidden shadow-sm">
+          {/* Student list (Clean white table) */}
+          <div className="rounded-2xl border border-slate-200 bg-white overflow-hidden shadow-xs">
             {loadingAttendance && (
-              <div className="flex items-center justify-center py-4 gap-2 text-sm text-muted-foreground border-b bg-muted/30">
+              <div className="flex items-center justify-center py-4 gap-2 text-sm text-slate-500 border-b border-slate-100 bg-slate-50/50">
                 <Loader2 className="size-3.5 animate-spin" />
                 Loading saved attendance…
               </div>
             )}
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b bg-muted/50">
-                  <th className="text-left font-semibold py-3 px-4">Student</th>
-                  <th className="text-center font-semibold py-3 px-4">Status</th>
-                  <th className="text-center font-semibold py-3 px-4">Toggle</th>
+                <tr className="border-b border-slate-200 bg-slate-50/80 text-slate-600 font-semibold">
+                  <th className="text-left py-3.5 px-5">Student</th>
+                  <th className="text-center py-3.5 px-5">Status</th>
+                  <th className="text-center py-3.5 px-5">Toggle</th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody className="divide-y divide-slate-100">
                 {students.map((student, idx) => {
                   const isPresent = attendance[student.id] === true;
                   return (
                     <tr
                       key={student.id}
-                      className={`border-b last:border-0 transition-colors cursor-pointer hover:bg-muted/20 ${
-                        idx % 2 === 0 ? "" : "bg-muted/10"
+                      className={`transition-colors cursor-pointer hover:bg-slate-50/70 ${
+                        idx % 2 === 0 ? "bg-white" : "bg-slate-50/30"
                       }`}
                       onClick={() => toggle(student.id)}
                     >
-                      <td className="py-3 px-4 font-medium">{student.name}</td>
-                      <td className="py-3 px-4 text-center">
+                      <td className="py-3.5 px-5 font-medium text-slate-800">{student.name}</td>
+                      <td className="py-3.5 px-5 text-center">
                         <span
-                          className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                          className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium border ${
                             isPresent
-                              ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400"
-                              : "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
+                              ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                              : "bg-red-50 text-red-700 border-red-200"
                           }`}
                         >
                           {isPresent ? (
@@ -269,15 +275,15 @@ export default function AttendancePage() {
                           {isPresent ? "Present" : "Absent"}
                         </span>
                       </td>
-                      <td className="py-3 px-4 text-center">
+                      <td className="py-3.5 px-5 text-center">
                         <button
                           type="button"
                           onClick={(e) => {
                             e.stopPropagation();
                             toggle(student.id);
                           }}
-                          className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
-                            isPresent ? "bg-emerald-500" : "bg-muted-foreground/30"
+                          className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4845d2]/40 ${
+                            isPresent ? "bg-emerald-500" : "bg-slate-300"
                           }`}
                           aria-label={`Toggle attendance for ${student.name}`}
                         >
@@ -296,9 +302,9 @@ export default function AttendancePage() {
           </div>
 
           {/* Save button */}
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between pt-2">
             {saved && (
-              <span className="flex items-center gap-1.5 text-sm text-emerald-600">
+              <span className="flex items-center gap-1.5 text-sm font-medium text-emerald-600 bg-emerald-50 border border-emerald-200 px-3 py-1.5 rounded-lg">
                 <CheckCircle2 className="size-4" />
                 Attendance saved successfully!
               </span>
@@ -307,7 +313,8 @@ export default function AttendancePage() {
             <Button
               onClick={handleSave}
               disabled={saving || students.length === 0}
-              className="gap-2"
+              suppressHydrationWarning
+              className="gap-2 bg-[#4845d2] hover:bg-[#3f3cb8] text-white font-medium shadow-xs"
             >
               {saving ? (
                 <Loader2 className="size-4 animate-spin" />

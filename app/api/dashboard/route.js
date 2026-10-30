@@ -1,6 +1,6 @@
 import { db } from "@/utils/postgres";
 import { ATTENDANCE, STUDENTS } from "@/utils/schema";
-import { eq, sql } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { getKindeServerSession } from "@kinde-oss/kinde-auth-nextjs/server";
 
@@ -11,27 +11,61 @@ export async function GET(req) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  try {
-    // Total students
-    const [{ count: totalStudents }] = await db
-      .select({ count: sql`count(*)::int` })
-      .from(STUDENTS);
+  const { searchParams } = new URL(req.url);
+  const grade = searchParams.get("grade");
+  const month = searchParams.get("month"); // e.g. "2024-05"
 
-    // Total attendance records
-    const [{ count: totalRecords }] = await db
+  try {
+    // 1. Total students condition
+    const studentConditions = [];
+    if (grade && grade !== "ALL") {
+      studentConditions.push(eq(STUDENTS.grade, grade));
+    }
+
+    const studentQuery = db.select({ count: sql`count(*)::int` }).from(STUDENTS);
+    const [{ count: totalStudents }] =
+      studentConditions.length > 0
+        ? await studentQuery.where(and(...studentConditions))
+        : await studentQuery;
+
+    // 2. Attendance conditions
+    const attendanceConditions = [];
+    if (grade && grade !== "ALL") {
+      attendanceConditions.push(eq(ATTENDANCE.grade, grade));
+    }
+    if (month && month !== "ALL") {
+      attendanceConditions.push(sql`${ATTENDANCE.date}::text LIKE ${month + "%"}`);
+    }
+
+    const totalAttendanceQuery = db
       .select({ count: sql`count(*)::int` })
       .from(ATTENDANCE);
+    const [{ count: totalRecords }] =
+      attendanceConditions.length > 0
+        ? await totalAttendanceQuery.where(and(...attendanceConditions))
+        : await totalAttendanceQuery;
 
     // Present count
+    const presentConditions = [
+      ...attendanceConditions,
+      eq(ATTENDANCE.present, true),
+    ];
     const [{ count: presentCount }] = await db
       .select({ count: sql`count(*)::int` })
       .from(ATTENDANCE)
-      .where(eq(ATTENDANCE.present, true));
+      .where(and(...presentConditions));
 
-    // Attendance percentage
+    const absentCount = totalRecords - presentCount;
+
+    // Accurate percentages
     const attendancePercentage =
       totalRecords > 0
-        ? Math.round((presentCount / totalRecords) * 100)
+        ? Number(((presentCount / totalRecords) * 100).toFixed(1))
+        : 0;
+
+    const absentPercentage =
+      totalRecords > 0
+        ? Number(((absentCount / totalRecords) * 100).toFixed(1))
         : 0;
 
     // Students by grade
@@ -44,15 +78,21 @@ export async function GET(req) {
       .groupBy(STUDENTS.grade)
       .orderBy(STUDENTS.grade);
 
-    // Recent attendance (last 7 days)
-    const recentAttendance = await db
+    // Recent attendance records
+    let recentQuery = db
       .select({
         date: ATTENDANCE.date,
         present: sql`sum(case when ${ATTENDANCE.present} then 1 else 0 end)::int`,
         absent: sql`sum(case when not ${ATTENDANCE.present} then 1 else 0 end)::int`,
         total: sql`count(*)::int`,
       })
-      .from(ATTENDANCE)
+      .from(ATTENDANCE);
+
+    if (attendanceConditions.length > 0) {
+      recentQuery = recentQuery.where(and(...attendanceConditions));
+    }
+
+    const recentAttendance = await recentQuery
       .groupBy(ATTENDANCE.date)
       .orderBy(sql`${ATTENDANCE.date} desc`)
       .limit(7);
@@ -62,14 +102,18 @@ export async function GET(req) {
         totalStudents,
         totalRecords,
         presentCount,
-        absentCount: totalRecords - presentCount,
+        absentCount,
         attendancePercentage,
+        absentPercentage,
         studentsByGrade,
         recentAttendance: recentAttendance.reverse(),
       },
     });
   } catch (err) {
     console.error("GET /api/dashboard error:", err);
-    return NextResponse.json({ error: "Failed to fetch statistics" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Failed to fetch statistics" },
+      { status: 500 }
+    );
   }
 }

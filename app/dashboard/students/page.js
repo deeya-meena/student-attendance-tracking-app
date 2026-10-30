@@ -294,7 +294,7 @@ export default function StudentsPage() {
             {students.length} student{students.length !== 1 ? "s" : ""} enrolled
           </p>
         </div>
-        <Button onClick={() => setAddOpen(true)} className="shrink-0">
+        <Button onClick={() => setAddOpen(true)} suppressHydrationWarning className="shrink-0">
           <UserPlus className="size-4" />
           Add New Student
         </Button>
@@ -308,13 +308,15 @@ export default function StudentsPage() {
             placeholder="Search students by name…"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="pl-8"
+            suppressHydrationWarning
+            className="pl-8 bg-white border-slate-200"
           />
         </div>
         <select
           value={gradeFilter}
           onChange={(e) => setGradeFilter(e.target.value)}
-          className="h-8 rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+          suppressHydrationWarning
+          className="h-8 rounded-lg border border-slate-200 bg-white px-2.5 text-sm text-slate-700 outline-none focus:ring-2 focus:ring-[#4845d2]/20"
         >
           <option value="all">All Grades</option>
           {availableGrades.map((g) => (
@@ -363,28 +365,27 @@ export default function StudentsPage() {
           )}
         </div>
       ) : (
-        <div className="rounded-xl border overflow-hidden shadow-sm">
+        <div className="rounded-2xl border border-slate-200 bg-white overflow-hidden shadow-xs">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b bg-muted/50">
-                <th className="text-left font-semibold py-3 px-4">Name</th>
-                <th className="text-left font-semibold py-3 px-4">Grade</th>
-                <th className="text-left font-semibold py-3 px-4 hidden sm:table-cell">
+              <tr className="border-b border-slate-200 bg-slate-50/80 text-slate-600 font-semibold">
+                <th className="text-left py-3.5 px-5">Name</th>
+                <th className="text-left py-3.5 px-5">Grade</th>
+                <th className="text-left py-3.5 px-5 hidden sm:table-cell">
                   Contact
                 </th>
-                <th className="text-left font-semibold py-3 px-4 hidden md:table-cell">
+                <th className="text-left py-3.5 px-5 hidden md:table-cell">
                   Address
                 </th>
-                <th className="text-right font-semibold py-3 px-4">Actions</th>
+                <th className="text-right py-3.5 px-5">Actions</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody className="divide-y divide-slate-100">
               {filtered.map((student, idx) => (
                 <tr
                   key={student.id}
-                  className={`border-b last:border-0 transition-colors hover:bg-muted/30 ${
-                    idx % 2 === 0 ? "" : "bg-muted/10"
-                  }`}
+                  className={`transition-colors hover:bg-slate-50/70 ${idx % 2 === 0 ? "bg-white" : "bg-slate-50/30"
+                    }`}
                 >
                   <td className="py-3 px-4 font-medium">{student.name}</td>
                   <td className="py-3 px-4">
